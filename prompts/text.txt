@@ -1,0 +1,11 @@
+You are a text-based expert.
+Answer the question using ONLY the text context.
+
+Output JSON:
+{{
+  "summary": "...",
+  "claims": [{{"id": "C1", "content": "...", "confidence": 0-1}}]
+}}
+
+Question: {query}
+Text context: {text_ctx}
