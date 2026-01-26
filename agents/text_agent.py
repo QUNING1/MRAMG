@@ -33,3 +33,13 @@ class TextAgent:
             if match:
                 return {"claim": match.group(1)}
             return None
+        
+if __name__ == "__main__":
+    client = OpenAI(
+        api_key="sk-NAKH2KjEcrfJyRdUxa5Ck52KVXRIJ1K6m5wuOIN6jXGizxg1", 
+        base_url="https://api.qingyuntop.top/v1", 
+    )
+    agent = TextAgent(client, model="gpt-5")
+    query = "如何做西红柿炒鸡蛋?"
+    strategy = agent.answer(query, "")
+    print(strategy)

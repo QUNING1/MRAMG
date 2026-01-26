@@ -8,4 +8,4 @@ Output JSON:
 }}
 
 Question: {query}
-Text context: {text_ctx}
+Text context: {context}
