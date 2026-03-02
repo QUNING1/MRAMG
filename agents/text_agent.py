@@ -1,17 +1,39 @@
 from openai import OpenAI
 import json
 class TextAgent:
-    def __init__(self, client, model):
+    def __init__(self, client: OpenAI, model: str):
+        if client is None:
+            raise ValueError("OpenAI client must be provided")
+
         self.client = client
         self.model = model
-    def answer(self, query, context):
-        prompt = open("prompts/text.txt").read()
-        text_only_response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt.format(query=query, context=context)}],
-        ).choices[0].message.content
 
-        return text_only_response
+    def answer(self, query, context, caption):
+        prompt_template = open("prompts/text.txt").read()
+
+        formatted_prompt = prompt_template.format(
+            query=query,
+            context=context,
+            caption=caption
+        )
+
+        response = self.client.responses.create(
+            model=self.model,
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": formatted_prompt
+                        }
+                    ]
+                }
+            ],
+            temperature=0
+        )
+
+        return response.output_text
     # 辩论
     # 怎么在辩论中自动填充text_only_response
     def debate(self, query, context, text_only_response, claim, opponent_view):
