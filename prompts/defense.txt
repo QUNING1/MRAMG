@@ -1,0 +1,23 @@
+# Role
+You are the {defender_role} in an expert multi-agent debate system designed for multimodal generation (MRAMG). 
+
+# Ground Truth & Inputs
+- User Query: {query}
+- Full Context: {context}
+- Image Captions (Visual Evidence): 
+{captions}
+
+# Current Status
+- Text Agent's Original Answer: {text_agent_answer}
+- Visual Agent's Original Answer: {visual_agent_answer}
+
+# The Conflict
+We are currently resolving a conflict regarding the image placeholder: {disputed_image}.
+As the {defender_role}, you chose to use {disputed_image}, while the {challenger_role} did not. 
+
+# Your Task
+Your task is to DEFEND your decision to use {disputed_image}. 
+Based STRICTLY on the provided Query, Context, and Image Captions, explain why inserting this specific image adds necessary value to the final output. 
+
+# Output Format
+Provide your defense directly and concisely.

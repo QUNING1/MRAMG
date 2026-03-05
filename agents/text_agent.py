@@ -1,12 +1,12 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from openai import OpenAI
 import json
-class TextAgent:
+from base_agent import BaseAgent
+class TextAgent(BaseAgent):
     def __init__(self, client: OpenAI, model: str):
-        if client is None:
-            raise ValueError("OpenAI client must be provided")
-
-        self.client = client
-        self.model = model
+        super().__init__(client, model, role_name="Text Agent")
 
     def answer(self, query, context, caption):
         prompt_template = open("prompts/text.txt").read()
@@ -17,44 +17,11 @@ class TextAgent:
             caption=caption
         )
 
-        response = self.client.responses.create(
-            model=self.model,
-            input=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "input_text",
-                            "text": formatted_prompt
-                        }
-                    ]
-                }
-            ],
-            temperature=0
-        )
-
-        return response.output_text
-    # 辩论
-    # 怎么在辩论中自动填充text_only_response
-    def debate(self, query, context, text_only_response, claim, opponent_view):
-        prompt = open("prompts/debate.txt").read()
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt.format(query=query, context=context, text_only_response=text_only_response, claim=claim, opponent_view=opponent_view)}],
-        ).choices[0].message.content
-
-        return response
-    
-    def parse_debate(self, response):
-        # 解析LLM输出的辩论字符串为JSON格式,若解析失败则尝试用正则表达式提取
-        try:
-            return json.loads(response)
-        except json.JSONDecodeError:
-            import re
-            match = re.search(r'"claim":\s*"([^"]+)"', response)
-            if match:
-                return {"claim": match.group(1)}
-            return None
+        # Text Agent 不需要传 img_paths
+        content = self._build_content(formatted_prompt, img_paths=None)
+        
+        # 初始草稿要求严谨，temperature=0
+        return self._call_llm(content, temperature=0.0)
         
 if __name__ == "__main__":
     client = OpenAI(
@@ -63,5 +30,5 @@ if __name__ == "__main__":
     )
     agent = TextAgent(client, model="gpt-5")
     query = "如何做西红柿炒鸡蛋?"
-    strategy = agent.answer(query, "")
+    strategy = agent.answer(query, "", "")
     print(strategy)
