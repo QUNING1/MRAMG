@@ -1,9 +1,5 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from openai import OpenAI
-import json
-from base_agent import BaseAgent
+from .base_agent import BaseAgent
 class TextAgent(BaseAgent):
     def __init__(self, client: OpenAI, model: str):
         super().__init__(client, model, role_name="Text Agent")

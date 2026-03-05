@@ -1,40 +1,29 @@
 from openai import OpenAI
-import json
 import re
-class JudgeAgent:
+from .base_agent import BaseAgent
+class JudgeAgent(BaseAgent):
     def __init__(self, client: OpenAI, model: str):
-        if client is None:
-            raise ValueError("OpenAI client must be provided")
-
+        super().__init__(client, model, role_name="Judge Agent")
         self.client = client
         self.model = model
 
-    def answer(self, query, context, caption):
-        prompt_template = open("prompts/text.txt").read()
-
+    def answer(self, query, img_paths, context, caption, defender_role, challenger_role, defender_argument, challenger_argument, disputed_image):
+        """生成初始图文排版草稿 (基于视觉特征)"""
+        prompt_template = open("prompts/judge.txt").read()
         formatted_prompt = prompt_template.format(
             query=query,
             context=context,
-            caption=caption
+            caption=caption, 
+            defender_role=defender_role, 
+            challenger_role=challenger_role, 
+            defender_argument=defender_argument, 
+            challenger_argument=challenger_argument, 
+            disputed_image=disputed_image, 
         )
-
-        response = self.client.responses.create(
-            model=self.model,
-            input=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "input_text",
-                            "text": formatted_prompt
-                        }
-                    ]
-                }
-            ],
-            temperature=0
-        )
-
-        return response.output_text
+        
+        content = self._build_content(formatted_prompt, img_paths=img_paths)
+        
+        return self._call_llm(content, temperature=0.0)
     # 检测冲突
     def detect_conflict(self, text_agent_response, visual_agent_response):
         """
@@ -81,27 +70,6 @@ class JudgeAgent:
         支持格式如: <img1>, <img_12>, <img0> 等。
         """
         return re.findall(r'<img_?\d+>', text)
-    # 辩论
-    # 怎么在辩论中自动填充text_only_response
-    def debate(self, query, context, text_only_response, claim, opponent_view):
-        prompt = open("prompts/debate.txt").read()
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt.format(query=query, context=context, text_only_response=text_only_response, claim=claim, opponent_view=opponent_view)}],
-        ).choices[0].message.content
-
-        return response
-    
-    def parse_debate(self, response):
-        # 解析LLM输出的辩论字符串为JSON格式,若解析失败则尝试用正则表达式提取
-        try:
-            return json.loads(response)
-        except json.JSONDecodeError:
-            import re
-            match = re.search(r'"claim":\s*"([^"]+)"', response)
-            if match:
-                return {"claim": match.group(1)}
-            return None
         
 if __name__ == "__main__":
     client = OpenAI(

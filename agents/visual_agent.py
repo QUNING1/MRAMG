@@ -1,11 +1,6 @@
-import sys
-import os
-
 from openai import OpenAI
-import json
-import base64
-from pathlib import Path
-class VisualAgent:
+from .base_agent import BaseAgent
+class VisualAgent(BaseAgent):
     def __init__(self, client: OpenAI, model: str):
         super().__init__(client, model, role_name="Visual Agent")
         

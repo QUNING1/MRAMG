@@ -2,9 +2,11 @@
 from .text_agent import TextAgent
 from .visual_agent import VisualAgent
 from .base_agent import BaseAgent
+from .judge_agent import JudgeAgent
 
 __all__ = [
     "TextAgent",
     "VisualAgent",
-    "BaseAgent"
+    "BaseAgent", 
+    "JudgeAgent",
 ]
