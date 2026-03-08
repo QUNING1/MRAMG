@@ -2,3 +2,6 @@ MRAMG-Bench/
 chromadb/
 models/
 __pycache__/
+test/
+logs/
+outputs/

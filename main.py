@@ -4,14 +4,13 @@ import json
 from openai import OpenAI
 import traceback
 from agents import TextAgent, VisualAgent, JudgeAgent
-from sentence_transformers import SentenceTransformer
 from utils import build_prompt_from_chroma, parse_json
 import argparse
-# logger
 import logging
 import os
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed
+logger = None
 
 def run_single_debate(
     conflict_type,
@@ -133,21 +132,15 @@ def parse_args():
     parser.add_argument("--top_k", type=int, default=10, help="Number of chunks to retrieve from ChromaDB")
     parser.add_argument("--api_key", type=str, required=True, help="OpenAI API Key")
     parser.add_argument("--base_url", type=str, default="https://api.qingyuntop.top/v1", help="OpenAI API Base URL")
-    parser.add_argument("--num_workers", type=int, default=4, help="并发执行的线程数 (建议 4-10 之间)")
+    parser.add_argument("--num_workers", type=int, default=5, help="并发执行的线程数 (建议 4-10 之间)")
 
     return parser.parse_args()
 
 def process_single_question(question, question_emb, doc_name, collection, text_agent, visual_agent, judge_agent, top_k):
     """封装单条数据的完整处理流水线"""
-    # 1. 检索阶段
-    if question_emb is None:
-        emb_model = SentenceTransformer("/data2/qn/MRAMG/models/bge-m3")
-        query_emb = emb_model.encode([question]).tolist()
-    else:
-        query_emb = [question_emb]
 
     chunks = collection.query(
-        query_embeddings=query_emb,
+        query_embeddings=[question_emb],
         n_results=top_k,
         include=["documents", "metadatas", "distances"] 
     )
@@ -281,6 +274,26 @@ def main():
     output_filename = f"{args.doc_name}_T-{safe_t_model}_V-{safe_v_model}_J-{safe_j_model}.jsonl"
     output_filepath = os.path.join(args.output_dir, output_filename)
 
+    # ===== 初始化日志 =====
+    log_dir = os.path.join(args.output_dir, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+
+    log_filename = output_filename.replace(".jsonl", ".log")
+    log_filepath = os.path.join(log_dir, log_filename)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(log_filepath, encoding="utf-8")
+        ]
+    )
+
+    global logger
+    logger = logging.getLogger(__name__)
+
+    logger.info(f"日志文件: {log_filepath}")
+
     if not os.path.exists(input_filepath):
         logger.error(f"❌ 找不到输入文件: {input_filepath}")
         return
@@ -294,51 +307,71 @@ def main():
     with open(input_filepath, 'r', encoding='utf-8') as f_in, \
          open(output_filepath, 'w', encoding='utf-8') as f_out:
         
-        for line_idx, line in enumerate(f_in):
-            if not line.strip():
-                continue
-                
-            try:
-                data = json.loads(line)
-                question = data.get('question', '')
-                question_emb = data.get('query_emb', None)
-                logger.info(f"\n=======================================================")
-                logger.info(f"📝 正在处理第 {line_idx + 1} 条数据 | Question: {question}")
-                
-                # 核心处理流水线
-                text_ans, vis_ans, conflicts, ledger, final_ans = process_single_question(
-                    question=question,
-                    question_emb=question_emb,
-                    doc_name=args.doc_name,
-                    collection=collection,
-                    text_agent=text_agent,
-                    visual_agent=visual_agent,
-                    judge_agent=judge_agent,
-                    top_k=args.top_k
-                )
-                
-                # 移除query_emb字段
-                if question_emb is not None:
-                    del data["query_emb"]
-                # 组装 5 个新增字段
-                data["text_agent_response"] = text_ans
-                data["visual_agent_response"] = vis_ans
-                data["conflicts"] = conflicts
-                data["debate_ledger"] = ledger
-                data["final_output"] = final_ans
-                
-                # 写入新文件 (ensure_ascii=False 保证中文字符正常显示)
-                f_out.write(json.dumps(data, ensure_ascii=False) + '\n')
-                f_out.flush() # 强制落盘，防止中途报错导致数据丢失
-                
-                processed_count += 1
-                logger.info(f"✅ 第 {line_idx + 1} 条数据处理成功并保存。")
-                
-            except Exception as e:
-                error_count += 1
-                logger.error(f"❌ 第 {line_idx + 1} 条数据处理失败! 错误信息: {e}")
-                logger.error(traceback.format_exc()) # 打印完整堆栈，方便排错
-                # 注意：这里我们只打日志，不抛出异常，让 for 循环继续处理下一条数据
+        lines = [(idx, line) for idx, line in enumerate(f_in) if line.strip()]
+
+        def worker(line_idx, line):
+            data = json.loads(line)
+            question = data.get('question', '')
+            question_emb = data.get('query_emb', None)
+
+            logger.info(f"\n=======================================================")
+            logger.info(f"📝 正在处理第 {line_idx + 1} 条数据 | Question: {question}")
+
+            if question_emb is None:
+                logger.warning(f"⚠ 第 {line_idx + 1} 条数据没有 query_emb，跳过推理")
+
+                data["text_agent_response"] = None
+                data["visual_agent_response"] = None
+                data["conflicts"] = []
+                data["debate_ledger"] = []
+                data["final_output"] = None
+
+                return line_idx, data
+
+            text_ans, vis_ans, conflicts, ledger, final_ans = process_single_question(
+                question=question,
+                question_emb=question_emb,
+                doc_name=args.doc_name,
+                collection=collection,
+                text_agent=text_agent,
+                visual_agent=visual_agent,
+                judge_agent=judge_agent,
+                top_k=args.top_k
+            )
+
+            if question_emb is not None:
+                del data["query_emb"]
+
+            data["text_agent_response"] = text_ans
+            data["visual_agent_response"] = vis_ans
+            data["conflicts"] = conflicts
+            data["debate_ledger"] = ledger
+            data["final_output"] = final_ans
+
+            return line_idx, data
+
+        with ThreadPoolExecutor(max_workers=args.num_workers) as executor:
+
+            futures = [
+                executor.submit(worker, idx, line)
+                for idx, line in lines
+            ]
+
+            for future in tqdm(as_completed(futures), total=len(futures), desc="Processing"):
+
+                try:
+                    line_idx, data = future.result()
+
+                    f_out.write(json.dumps(data, ensure_ascii=False) + '\n')
+                    f_out.flush()
+
+                    processed_count += 1
+                    logger.info(f"✅ 第 {line_idx + 1} 条数据处理成功并保存。")
+
+                except Exception as e:
+                    error_count += 1
+                    logger.error(f"❌ 数据处理失败! 错误信息: {e}")
+                    logger.error(traceback.format_exc())
 
     logger.info(f"\n🎉 评测任务全部完成！")
     logger.info(f"📊 统计: 成功处理 {processed_count} 条，失败 {error_count} 条。")
