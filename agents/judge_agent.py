@@ -1,24 +1,72 @@
 from openai import OpenAI
 import re
 from .base_agent import BaseAgent
+import json
 class JudgeAgent(BaseAgent):
-    def __init__(self, client: OpenAI, model: str):
+    def __init__(self, client: OpenAI, model: str, temperature: float = 0.0):
         super().__init__(client, model, role_name="Judge Agent")
         self.client = client
         self.model = model
+        self.temperature = temperature
 
-    def answer(self, query, img_paths, context, caption, defender_role, challenger_role, defender_argument, challenger_argument, disputed_image):
-        """生成初始图文排版草稿 (基于视觉特征)"""
+    def judge(self, query, context, caption, disputed_item, defender_role, challenger_role, defender_argument, challenger_argument, conflict_type, img_paths=None):
+        """法官裁决方法"""
         prompt_template = open("prompts/judge.txt").read()
+
+        try:
+            conflict_desc_template = self.templates_config["judge"][conflict_type]["conflict_description"]
+        except KeyError:
+            raise ValueError(f"Template not found for action 'judge' and conflict_type '{conflict_type}'")
+
+        defender_name = defender_role.lower().replace(" ", "_")
+        challenger_name = challenger_role.lower().replace(" ", "_")
+
+        if not isinstance(disputed_item, dict):
+            raise ValueError("disputed_item must be a dictionary")
+        
+        if conflict_type == "set_conflict" and disputed_item.get("disputed_image") is None:
+            raise ValueError("disputed_item must contain 'disputed_image' key")
+
+        if conflict_type == "order_conflict" and (disputed_item.get(f"{defender_name}_img_order") is None or disputed_item.get(f"{challenger_name}_img_order") is None):
+            raise ValueError(f"disputed_item must contain '{defender_name}_img_order' and '{challenger_name}_img_order' keys")
+        
+        # 安全提取变量
+        d_image = disputed_item.get("disputed_image", "")
+        d_order = disputed_item.get(f"{defender_name}_img_order", "[]")
+        c_order = disputed_item.get(f"{challenger_name}_img_order", "[]")
+
+        conflict_transcript = conflict_desc_template.format(
+            disputed_image=d_image,
+            defender_role=defender_role,
+            challenger_role=challenger_role,
+            defender_img_order=d_order,
+            challenger_img_order=c_order,
+        )
+
+
         formatted_prompt = prompt_template.format(
             query=query,
             context=context,
             caption=caption, 
-            defender_role=defender_role, 
-            challenger_role=challenger_role, 
-            defender_argument=defender_argument, 
+            conflict_transcript=conflict_transcript,
+            defender_role=defender_role,
+            challenger_role=challenger_role,
+            defender_argument=defender_argument,
             challenger_argument=challenger_argument, 
-            disputed_image=disputed_image, 
+        )
+        
+        content = self._build_content(formatted_prompt, img_paths=img_paths)
+        
+        return self._call_llm(content, temperature=self.temperature)
+    
+    def synthesize(self, query, context, caption, text_draft, debate_ledger, img_paths=None):
+        prompt_template = open("prompts/synthesize.txt").read()
+        formatted_prompt = prompt_template.format(
+            query=query,
+            context=context,
+            caption=caption, 
+            text_draft=text_draft,
+            debate_ledger=json.dumps(debate_ledger, ensure_ascii=False, indent=2)
         )
         
         content = self._build_content(formatted_prompt, img_paths=img_paths)
@@ -34,7 +82,48 @@ class JudgeAgent(BaseAgent):
         3. 局部物证冲突(P2)：同点不同图，在同一个知识点上，各自提交了不同的视觉证据。
         4. 顺序与时序冲突(P1)：因果倒置，图片的整体排列顺序违背了物理常识或时间线。
         """
-        return self._detect_set_conflict(text_agent_response, visual_agent_response)
+        conflicts = []
+        # 1. 检测集合冲突 (P0)
+        set_conflicts = self._detect_set_conflict(text_agent_response, visual_agent_response)
+        if set_conflicts:
+            conflicts.extend(set_conflicts)
+            
+        # 2. 检测顺序冲突 (P1)
+        order_conflicts = self._detect_order_conflict(text_agent_response, visual_agent_response)
+        if order_conflicts:
+            conflicts.extend(order_conflicts)
+            
+        return conflicts
+
+    def _detect_order_conflict(self, text_agent_response, visual_agent_response):
+        """
+        检测纯粹的时序与顺序冲突 (Order Conflict)。
+        通过对比双方共有的图片交集，判断其相对排版顺序是否一致。
+        """
+        list_text_images = self._extract_images(text_agent_response)
+        list_visual_images = self._extract_images(visual_agent_response)
+
+        common_images = set(list_text_images) & set(list_visual_images)
+
+        if len(common_images) < 2:
+            return []
+
+        text_order = [img for img in list_text_images if img in common_images]
+        visual_order = [img for img in list_visual_images if img in common_images]
+
+        conflicts = []
+        if text_order != visual_order:
+            conflicts.append({
+                "conflict_type": "order_conflict",
+                "conflict_info": {
+                    "text_order": text_order,
+                    "visual_order": visual_order, 
+                    "common_images": list(common_images)
+                }
+            })
+
+        return conflicts
+    
     def _detect_set_conflict(self, text_agent_response, visual_agent_response):
         """
         检测文本代理和视觉代理的响应是否存在选图集合冲突(P0)：宏观数量与范围分歧，该不该配图？全篇配几张图？
@@ -70,13 +159,3 @@ class JudgeAgent(BaseAgent):
         支持格式如: <img1>, <img_12>, <img0> 等。
         """
         return re.findall(r'<img_?\d+>', text)
-        
-if __name__ == "__main__":
-    client = OpenAI(
-        api_key="sk-NAKH2KjEcrfJyRdUxa5Ck52KVXRIJ1K6m5wuOIN6jXGizxg1", 
-        base_url="https://api.qingyuntop.top/v1", 
-    )
-    agent = TextAgent(client, model="gpt-5")
-    query = "如何做西红柿炒鸡蛋?"
-    strategy = agent.answer(query, "")
-    print(strategy)

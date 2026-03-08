@@ -1,3 +1,4 @@
 MRAMG-Bench/
 chromadb/
 models/
+__pycache__/
