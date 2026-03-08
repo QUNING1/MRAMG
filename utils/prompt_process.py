@@ -37,7 +37,7 @@ def build_prompt_from_chroma(doc_name, chunks):
     all_img_paths = []
     
     global_img_id = 1
-    img_path_to_id = {}
+    img_name_to_id = {}
     
     for i, (text, meta) in enumerate(zip(docs, metas)):
         
@@ -50,17 +50,18 @@ def build_prompt_from_chroma(doc_name, chunks):
         
         img_list = img_str.split(",")
         caption_dict, img_paths = get_image_info(doc_name, img_list)
-        all_img_paths.extend(img_paths)
         
         # 逐个替换 <PIC>
-        for img_path in img_list:
-            
-            if img_path not in img_path_to_id:
-                img_path_to_id[img_path] = global_img_id
-                image_captions.append(f"[img{global_img_id}_caption] {caption_dict[img_path]}")
+        for img_name, img_path in zip(img_list, img_paths):
+            if img_name not in img_name_to_id:
+                img_name_to_id[img_name] = global_img_id
+                image_captions.append(
+                    f"[img{global_img_id}_caption] {caption_dict[img_name]}"
+                )
+                all_img_paths.append(img_path)
                 global_img_id += 1
-            
-            img_id = img_path_to_id[img_path]
+
+            img_id = img_name_to_id[img_name]
             
             # 替换一个 <PIC>
             text = text.replace("<PIC>", f"<img{img_id}>", 1)
@@ -74,4 +75,4 @@ def build_prompt_from_chroma(doc_name, chunks):
     context_block = "\n".join(context_parts)
     caption_block = "\n".join(image_captions)
     
-    return context_block, caption_block, all_img_paths
+    return context_block, caption_block, all_img_paths, img_name_to_id

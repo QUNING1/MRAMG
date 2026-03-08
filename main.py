@@ -145,7 +145,7 @@ def process_single_question(question, question_emb, doc_name, collection, text_a
         include=["documents", "metadatas", "distances"] 
     )
     
-    content, caption, all_img_paths = build_prompt_from_chroma(doc_name, chunks)
+    content, caption, all_img_paths, img_name_to_id = build_prompt_from_chroma(doc_name, chunks)
     logger.info(f"检索完成 | 命中 chunks: {len(chunks['documents'][0])} | 图片数量: {len(all_img_paths)}")
     
     # 2. 独立生成双轨草稿
@@ -243,7 +243,7 @@ def process_single_question(question, question_emb, doc_name, collection, text_a
         caption=caption,
     )
 
-    return text_agent_response, visual_agent_response, conflicts, debate_ledger, final_output
+    return text_agent_response, visual_agent_response, conflicts, debate_ledger, final_output, img_name_to_id
 
 def main():
     args = parse_args()
@@ -328,7 +328,7 @@ def main():
 
                 return line_idx, data
 
-            text_ans, vis_ans, conflicts, ledger, final_ans = process_single_question(
+            text_ans, vis_ans, conflicts, ledger, final_ans, img_name_to_id = process_single_question(
                 question=question,
                 question_emb=question_emb,
                 doc_name=args.doc_name,
@@ -342,6 +342,7 @@ def main():
             if question_emb is not None:
                 del data["query_emb"]
 
+            data["img_name_to_id"] = img_name_to_id
             data["text_agent_response"] = text_ans
             data["visual_agent_response"] = vis_ans
             data["conflicts"] = conflicts
