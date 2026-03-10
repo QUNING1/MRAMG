@@ -10,6 +10,7 @@ export BASE_URL="https://api.qingyuntop.top/v1"
 
 # 2. 设置评测文档与模型配置
 DOC_NAMES=("arxiv" "manual" "recipe" "web" "wiki" "wit")                  # e.g., manual, arxiv
+# DOC_NAMES=("recipe" "web" "wiki" "wit")
 TEXT_MODEL="gpt-4o"
 VISUAL_MODEL="gpt-4o"
 JUDGE_MODEL="gpt-4o"
@@ -18,7 +19,7 @@ JUDGE_MODEL="gpt-4o"
 INPUT_DIR="MRAMG-Bench/mqa_with_emb"
 OUTPUT_DIR="outputs"
 TOP_K=10
-NUM_WORKERS=5                    # 建议并发数：4-10。不宜过高，防止触发 API 速率限制 (Rate Limit)
+NUM_WORKERS=5
 
 # 4. 遍历文档列表执行测试
 for DOC_NAME in "${DOC_NAMES[@]}"; do

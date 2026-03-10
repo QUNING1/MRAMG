@@ -4,6 +4,11 @@
 # MRAMG 多模态评估启动脚本 (Objective + LLM Subjective)
 # ==========================================
 
+# ====== 新增：HuggingFace 本地模型缓存路径 ======
+export CUDA_VISIBLE_DEVICES=5
+export HF_HOME="/data2/qn/MRAMG/models"
+export TRANSFORMERS_CACHE="/data2/qn/MRAMG/models"
+
 # 1. 设置 API 信息 (替换为你自己的真实 Key)
 API_KEY="sk-NAKH2KjEcrfJyRdUxa5Ck52KVXRIJ1K6m5wuOIN6jXGizxg1"
 BASE_URL="https://api.qingyuntop.top/v1"
@@ -14,13 +19,18 @@ INPUT_DIR="outputs"
 
 # 本地 BERT 模型的路径 (用于计算 BERTScore)
 # 请替换为你服务器上真实的绝对路径，例如 /data2/qn/MRAMG/models/bert-base-uncased 或 roberta-large
-BERT_PATH="/data2/qn/MRAMG/models/roberta-large" 
+BERT_PATH="roberta-large" 
 
 # 3. 评估参数配置
 LANG="en"             # BERTScore 的语言 ("en" 或 "zh")
 DEVICE="cuda"         # 计算 BERTScore 使用的设备 ("cuda" 或 "cpu")
-NUM_WORKERS=5         # LLM 评估的并发线程数 (根据 API 速率限制调整)
+NUM_WORKERS=10         # LLM 评估的并发线程数 (根据 API 速率限制调整)
 TOP_K=10              # 检索的 top-k 数量 (与你在 benchmark 时保持一致)
+
+# 4. 评估结果输出配置
+SUMMARY_FILE="outputs/metrics.csv" # 评估结果的输出文件路径
+
+
 
 # 打印启动信息
 echo "========================================================"
@@ -39,7 +49,8 @@ python eval/evaluation.py \
     --api_key "${API_KEY}" \
     --base_url "${BASE_URL}" \
     --num_workers ${NUM_WORKERS} \
-    --top_k ${TOP_K}
+    --top_k ${TOP_K} \
+    --summary_file_path "${SUMMARY_FILE}"
 
 echo "--------------------------------------------------------"
 echo "✅ 评估流程全部结束。"
