@@ -66,21 +66,31 @@ def print_summary(file_name, metrics_list, llm_metrics_list=None, summary_file=N
     eval_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     # 打印到终端
+    obj_pct = [round(x * 100, 2) for x in avg]
+
     print(f"\n[{'='*40}]")
     print(f"📊 [Summary] File: {file_name} | Data Length: {data_len} | Eval Time: {eval_time}")
     print(f"  [Objective Metrics]")
-    print(f"  Img Precision: {avg[0]:.4f} | Recall: {avg[1]:.4f} | F1: {avg[2]:.4f}")
-    print(f"  Img Ordering:  {avg[3]:.4f}")
-    print(f"  RougeLsum:     {avg[4]:.4f}")
-    print(f"  BERTScore F1:  {avg[5]:.4f}")
+    print(f"  Img Precision: {obj_pct[0]:.2f} | Recall: {obj_pct[1]:.2f} | F1: {obj_pct[2]:.2f}")
+    print(f"  Img Ordering:  {obj_pct[3]:.2f}")
+    print(f"  RougeLsum:     {obj_pct[4]:.2f}")
+    print(f"  BERTScore F1:  {obj_pct[5]:.2f}")
     
+    llm_row_data = [None] * 4
     if llm_metrics_list and len(llm_metrics_list) > 0:
         llm_avg = np.mean(llm_metrics_list, axis=0)
+        comp_pct = round((llm_avg[0] / 5) * 100, 2)
+        eff_pct = round((llm_avg[1] / 5) * 100, 2)
+        pos_pct = round(llm_avg[2] * 100, 2)
+        rel_pct = round((llm_avg[3] / 5) * 100, 2)
+
+        llm_row_data = [comp_pct, eff_pct, pos_pct, rel_pct]
+
         print(f"  [LLM Subjective Metrics (Out of 5 or 10)]")
-        print(f"  Answer Quality:      {llm_avg[0]:.2f}")
-        print(f"  Image Effectiveness: {llm_avg[1]:.2f}")
-        print(f"  Image Position:      {llm_avg[2]:.2f}")
-        print(f"  Image Relevance:     {llm_avg[3]:.2f}")
+        print(f"  Answer Quality:      {comp_pct:.2f}")
+        print(f"  Image Effectiveness: {eff_pct:.2f}")
+        print(f"  Image Position:      {pos_pct:.2f}")
+        print(f"  Image Relevance:     {rel_pct:.2f}")
     print(f"[{'='*40}]\n")
     
     # 写入 CSV 文件
@@ -95,22 +105,14 @@ def print_summary(file_name, metrics_list, llm_metrics_list=None, summary_file=N
             if not file_exists:
                 header = [
                     "file_name", "data_length", "eval_time",
-                    "img_precision", "img_recall", "img_f1", "img_ordering",
-                    "rougeLsum_f1", "bert_score_f1",
-                    "answer_quality", "image_effectiveness", "image_position", "image_relevance"
+                    "Prec.", "Rec.", "F1", 
+                    "Ord.", "R.L.", "B.S.", 
+                    "Comp.", "Eff.", "Pos.", "Rel."
                 ]
                 writer.writerow(header)
             
-            row = [
-                file_name, data_len, eval_time,
-                avg[0], avg[1], avg[2], avg[3],
-                avg[4], avg[5]
-            ]
-            if llm_metrics_list and len(llm_metrics_list) > 0:
-                row += [llm_avg[0], llm_avg[1], llm_avg[2], llm_avg[3]]
-            else:
-                row += [None]*4  # 如果没有 LLM 指标，用空值填充
-            
+            # 构建写入行
+            row = [file_name, data_len, eval_time] + obj_pct + llm_row_data
             writer.writerow(row)
 
 
