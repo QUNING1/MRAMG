@@ -1,8 +1,8 @@
 from openai import OpenAI
 from .base_agent import BaseAgent
 class TextAgent(BaseAgent):
-    def __init__(self, client: OpenAI, model: str):
-        super().__init__(client, model, role_name="Text Agent")
+    def __init__(self, client: OpenAI, model: str, img_server_port: int, model_mode: str):
+        super().__init__(client, model, role_name="Text Agent", img_server_port=img_server_port, model_mode=model_mode)
 
     def answer(self, query, context, caption):
         prompt_template = open("prompts/text.txt").read()

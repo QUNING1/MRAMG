@@ -119,6 +119,9 @@ def run_single_debate(
 
 def sanitize_filename(name):
     """清理模型名称中的特殊字符，方便用作文件名"""
+    # 如果是路径，那么取最后一个目录名
+    if "/" in name:
+        name = name.split("/")[-1]
     return name.replace("/", "-").replace(":", "-").replace(".", "_")
 
 def parse_args():
@@ -133,6 +136,8 @@ def parse_args():
     parser.add_argument("--api_key", type=str, required=True, help="OpenAI API Key")
     parser.add_argument("--base_url", type=str, default="https://api.qingyuntop.top/v1", help="OpenAI API Base URL")
     parser.add_argument("--num_workers", type=int, default=5, help="并发执行的线程数 (建议 4-10 之间)")
+    parser.add_argument("--model_mode", type=str, default="api", help="Model mode (api or vllm)")
+    parser.add_argument("--img_server_port", type=int, default=8009, help="Port for image server")
 
     return parser.parse_args()
 
@@ -259,9 +264,9 @@ def main():
     )
     
     # 实例化所有 Agents (根据传入的参数配置模型)
-    text_agent = TextAgent(client, model=args.text_model)
-    visual_agent = VisualAgent(client, model=args.visual_model)
-    judge_agent = JudgeAgent(client, model=args.judge_model)
+    text_agent = TextAgent(client, model=args.text_model, model_mode=args.model_mode, img_server_port=args.img_server_port)
+    visual_agent = VisualAgent(client, model=args.visual_model, model_mode=args.model_mode, img_server_port=args.img_server_port)
+    judge_agent = JudgeAgent(client, model=args.judge_model, model_mode=args.model_mode, img_server_port=args.img_server_port)
 
     # 配置文件路径
     input_filepath = os.path.join(args.input_dir, f"{args.doc_name}_mqa.jsonl")

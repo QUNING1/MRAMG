@@ -3,8 +3,8 @@ import re
 from .base_agent import BaseAgent
 import json
 class JudgeAgent(BaseAgent):
-    def __init__(self, client: OpenAI, model: str, temperature: float = 0.0):
-        super().__init__(client, model, role_name="Judge Agent")
+    def __init__(self, client: OpenAI, model: str, img_server_port: int, model_mode: str, temperature: float = 0.0):
+        super().__init__(client, model, role_name="Judge Agent", img_server_port=img_server_port, model_mode=model_mode)
         self.client = client
         self.model = model
         self.temperature = temperature

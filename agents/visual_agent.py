@@ -1,8 +1,8 @@
 from openai import OpenAI
 from .base_agent import BaseAgent
 class VisualAgent(BaseAgent):
-    def __init__(self, client: OpenAI, model: str):
-        super().__init__(client, model, role_name="Visual Agent")
+    def __init__(self, client: OpenAI, model: str, img_server_port: int, model_mode: str):
+        super().__init__(client, model, role_name="Visual Agent", img_server_port=img_server_port, model_mode=model_mode)
         
     def answer(self, query, img_paths, context, caption):
         """生成初始图文排版草稿 (基于视觉特征)"""
@@ -20,13 +20,13 @@ class VisualAgent(BaseAgent):
     
 if __name__ == "__main__":
     client = OpenAI(
-        api_key="sk-NAKH2KjEcrfJyRdUxa5Ck52KVXRIJ1K6m5wuOIN6jXGizxg1", 
-        base_url="https://api.qingyuntop.top/v1", 
+        api_key="llama", 
+        base_url="http://127.0.0.1:8005/v1", 
     )
-    agent = VisualAgent(client, model="gpt-4o")
+    agent = VisualAgent(client, model="/data2/qn/KGQA/models/Qwen2.5-VL-72B-Instruct", img_server_port=8009, model_mode="vllm")
     query = "图中描述的是什么内容?"
-    img_paths = ["MRAMG-Bench/IMAGE/IMAGE/images/ARXIV/2403_14627v2_1.png"]
-    context = ""
+    img_paths = ["MRAMG-Bench/IMAGE/IMAGE/images/ARXIV/2403_14627v2_1.png", "MRAMG-Bench/IMAGE/IMAGE/images/ARXIV/2403_14627v2_1.png"]
+    context = " "
     caption = "图"
 
     strategy = agent.answer(query, img_paths, context, caption)
