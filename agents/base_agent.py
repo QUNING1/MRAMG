@@ -24,27 +24,38 @@ class BaseAgent:
         with open("prompts/conflict_templates.yaml", "r", encoding="utf-8") as f:
             self.templates_config = yaml.safe_load(f)
 
-    def _encode_image(self, img_path: str) -> str:
+    def _encode_image(self, img_path: str, max_size: int = 224) -> str:
         """
-        将本地图片转为 base64 data URL
+        将本地图片转为 base64 data URL，并压缩图片到 max_size 最大边长
         """
         img_path = Path(img_path)
-
         if not img_path.exists():
             raise FileNotFoundError(f"Image not found: {img_path}")
 
         suffix = img_path.suffix.lower()
         if suffix in [".jpg", ".jpeg"]:
             mime = "image/jpeg"
+            format_str = "JPEG"
         elif suffix == ".png":
             mime = "image/png"
+            format_str = "PNG"
         elif suffix == ".webp":
             mime = "image/webp"
+            format_str = "WEBP"
         else:
             raise ValueError(f"Unsupported image format: {suffix}")
 
-        with open(img_path, "rb") as f:
-            encoded = base64.b64encode(f.read()).decode("utf-8")
+        # 打开图片并压缩
+        with Image.open(img_path) as im:
+            # 保持长宽比例，最大边长不超过 max_size
+            im.thumbnail((max_size, max_size))
+            buffered = io.BytesIO()
+            # 保存到内存缓冲区
+            if format_str == "JPEG":
+                im.save(buffered, format=format_str, quality=85)  # 可以调整 JPEG 压缩质量
+            else:
+                im.save(buffered, format=format_str)
+            encoded = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
         return f"data:{mime};base64,{encoded}"
 
@@ -75,15 +86,15 @@ class BaseAgent:
                             root_dir="MRAMG-Bench/IMAGE/IMAGE/images",  # 你需要在初始化时指定图片根目录
                             server_url=self.img_server_url,      # 你需要在初始化时指定 server 地址
                         )
-                        # 检查 URL 是否可访问
-                        try:
-                            resp = requests.head(url, timeout=1)
-                            if resp.status_code != 200:
-                                print(f"[Warning] Image URL not reachable: {url}")
-                                continue
-                        except requests.RequestException:
-                            print(f"[Warning] Image URL request failed: {url}")
-                            continue
+                        # # 检查 URL 是否可访问
+                        # try:
+                        #     resp = requests.head(url, timeout=5)
+                        #     if resp.status_code != 200:
+                        #         print(f"[Warning] Image URL not reachable: {url}")
+                        #         continue
+                        # except requests.RequestException:
+                        #     print(f"[Warning] Image URL request failed: {url}")
+                        #     continue
                         content.append({
                             "type": "image_url",
                             "image_url": {"url": url}
