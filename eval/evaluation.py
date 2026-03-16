@@ -152,10 +152,10 @@ def process_objective_metrics(file_path, args, r_scorer):
         gt_imgs = []
         next_id = max(img_map.values(), default=0) + 1
         for img in data.get("images_list", []):
-            if img not in img_map:
-                img_map[img] = next_id
+            if str(img) not in img_map:
+                img_map[str(img)] = next_id
                 next_id += 1
-            gt_imgs.append(f"<img{img_map[img]}>")
+            gt_imgs.append(f"<img{img_map[str(img)]}>")
         
         pred_imgs = re.findall(r"<img\d+>", data.get("final_output", ""))
         

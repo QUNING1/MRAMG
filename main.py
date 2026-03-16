@@ -261,6 +261,7 @@ def main():
     client = OpenAI(
         api_key=args.api_key, 
         base_url=args.base_url, 
+        timeout=600,
     )
     
     # 实例化所有 Agents (根据传入的参数配置模型)
