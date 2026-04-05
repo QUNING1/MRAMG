@@ -15,6 +15,9 @@ You are the {challenger_role} in an expert multi-agent debate system designed fo
 The {defender_role} has defended their stance with the following argument:
 "{defender_argument}"
 
+# Debate History
+{debate_history}
+
 # Your Task
 CRITIQUE the {defender_role}'s argument based on the specific nature of the conflict.
 

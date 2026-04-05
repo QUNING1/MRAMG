@@ -73,6 +73,6 @@ def build_prompt_from_chroma(doc_name, chunks):
         raise ValueError("image_captions和all_img_paths长度不一致")
     
     context_block = "\n".join(context_parts)
-    caption_block = "\n".join(image_captions)
+    # caption_block = "\n".join(image_captions)
     
-    return context_block, caption_block, all_img_paths, img_name_to_id
+    return context_block, image_captions, all_img_paths, img_name_to_id

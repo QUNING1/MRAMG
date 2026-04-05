@@ -6,6 +6,9 @@ You are the Chief Judge in an expert multi-agent system designed for multimodal 
 - Full Context: {context}
 - Image Captions: {caption}
 
+## Important
+- Only some image placeholders in Full Context are actually provided as input images, and each caption is sequentially aligned in a strict one-to-one correspondence with its respective input image.
+
 # The Conflict Transcript
 {conflict_transcript}
 
@@ -14,6 +17,9 @@ You are the Chief Judge in an expert multi-agent system designed for multimodal 
 
 - {challenger_role}'s Counter-Argument (Critique): 
 "{challenger_argument}"
+
+# Debate History
+{debate_history}
 
 # Your Task
 Act as an impartial arbitrator. Review the Ground Truth and carefully weigh the arguments from both agents. 
