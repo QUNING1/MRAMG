@@ -456,7 +456,7 @@ def main():
     visual_agent = VisualAgent(client, model=args.visual_model, model_mode=args.model_mode, img_server_port=args.img_server_port, version=args.version)
 
     # judge agent 版本暂时固定为 v1，给全部caption，不给img
-    judge_agent = JudgeAgent(client, model=args.judge_model, model_mode=args.model_mode, img_server_port=args.img_server_port, version="v1")
+    judge_agent = JudgeAgent(client, model=args.judge_model, model_mode=args.model_mode, img_server_port=args.img_server_port, version=args.version)
 
     # 配置文件路径
     input_filepath = os.path.join(args.input_dir, f"{args.doc_name}_mqa.jsonl")
