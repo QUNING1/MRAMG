@@ -7,6 +7,8 @@ from PIL import Image
 import io
 import requests
 from img_server import get_local_image_url
+import logging
+logger = logging.getLogger(__name__)
 class BaseAgent:
     def __init__(
         self, 
@@ -68,6 +70,29 @@ class BaseAgent:
             encoded = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
         return f"data:{mime};base64,{encoded}"
+    # def _encode_image(self, img_path: str) -> str:
+    #     """
+    #     将本地图片转为 base64 data URL
+    #     """
+    #     img_path = Path(img_path)
+
+    #     if not img_path.exists():
+    #         raise FileNotFoundError(f"Image not found: {img_path}")
+
+    #     suffix = img_path.suffix.lower()
+    #     if suffix in [".jpg", ".jpeg"]:
+    #         mime = "image/jpeg"
+    #     elif suffix == ".png":
+    #         mime = "image/png"
+    #     elif suffix == ".webp":
+    #         mime = "image/webp"
+    #     else:
+    #         raise ValueError(f"Unsupported image format: {suffix}")
+
+    #     with open(img_path, "rb") as f:
+    #         encoded = base64.b64encode(f.read()).decode("utf-8")
+
+    #     return f"data:{mime};base64,{encoded}"
 
     def _build_content(self, text_prompt: str, img_paths: list = None) -> list:
         """
@@ -136,6 +161,7 @@ class BaseAgent:
                 ],
                 temperature=temperature
             )
+            logger.info(f"Token usage: {response.usage}")
             return response.output_text
         elif self.model_mode == "vllm":
             response = self.client.chat.completions.create(

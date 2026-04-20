@@ -10,12 +10,12 @@ export HF_HOME="/data2/qn/MRAMG/models"
 export TRANSFORMERS_CACHE="/data2/qn/MRAMG/models"
 
 # 1. 设置 API 信息 (替换为你自己的真实 Key)
-API_KEY="sk-NAKH2KjEcrfJyRdUxa5Ck52KVXRIJ1K6m5wuOIN6jXGizxg1"
+API_KEY="your_api_key_here"
 BASE_URL="https://api.qingyuntop.top/v1"
 
 # 2. 路径配置
 # 输入目录 (存放你之前 test_mramg.py 跑出来的结果文件 jsonl 的文件夹)
-INPUT_DIR="outputs"
+INPUT_DIR="outputs/gpt-4o-mini/v2/done"
 
 # 本地 BERT 模型的路径 (用于计算 BERTScore)
 # 请替换为你服务器上真实的绝对路径，例如 /data2/qn/MRAMG/models/bert-base-uncased 或 roberta-large
